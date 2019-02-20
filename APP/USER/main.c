@@ -97,8 +97,14 @@ int main(void)
 	
 	//TIM3_Int_Init(9999, 7199);
 	uart_init(115200);	 	//串口初始化为115200
+	//uart2_init(115200);
 	//Usart_DMA_Init();
 
+//	while(1) {
+//		printf("Welcom to OilTrace!!!\n");
+//		delay_ms(1000);
+//	}
+	
 	W25QXX_Init();
 	
 	// SPI_MCP3204_Init();
@@ -194,6 +200,7 @@ void SoftReset(void)
 }
 
 extern u32 USART_RX_STA;
+extern u32 USART_RX_STA2;
 void iap_task(void *p_arg)
 {
 	OS_ERR err;
@@ -237,7 +244,7 @@ void iap_task(void *p_arg)
 		if (30 == i++) {
 			i = 0;
 			if (g_printf_enable != 0) {
-				u1_printf("APP1 STA = %X\n", USART_RX_STA);
+				u1_printf("APP1 STA = %X\n", USART_RX_STA2);
 			}
 		}
 		
@@ -252,8 +259,8 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 	MD5_CTX package_md5_ctx;
 	u8 package_md5_calc[SSL_MAX_LEN] = {0};
 					
-	if ((str = strstr((const char *)USART_RX_BUF, "STA"))) {
-		if ((str = strstr((const char *)USART_RX_BUF+((USART_RX_STA&0xFFFF)-3), "END"))) {
+	if ((str = strstr((const char *)USART_RX_BUF2, "STA"))) {
+		if ((str = strstr((const char *)USART_RX_BUF2+((USART_RX_STA2&0xFFFF)-3), "END"))) {
 			u1_printf("package format is OK\n");
 		} else {
 			u1_printf("package format tail is NG\n");
@@ -264,17 +271,17 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 		return;
 	}
 	
-	if ((USART_RX_STA&0xFFFF) < (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE)) {
+	if ((USART_RX_STA2&0xFFFF) < (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE)) {
 		u1_printf("package format size is NG\n");
 		return;
 	}
 
-	memcpy(p_oil_pro->pro_crc, (char*)USART_RX_BUF+((USART_RX_STA&0xFFFF) - (PKT_CRC_SIZE+PKT_TAIL_SIZE)), PKT_CRC_SIZE);
+	memcpy(p_oil_pro->pro_crc, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - (PKT_CRC_SIZE+PKT_TAIL_SIZE)), PKT_CRC_SIZE);
 	u1_printf("pro_crc = %s\n", p_oil_pro->pro_crc);
 
-	dat_len = ((USART_RX_STA&0xFFFF) - (PKT_HEAD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE));
+	dat_len = ((USART_RX_STA2&0xFFFF) - (PKT_HEAD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE));
 	GAgent_MD5Init(&package_md5_ctx);
-	GAgent_MD5Update(&package_md5_ctx, USART_RX_BUF+PKT_HEAD_SIZE, dat_len);
+	GAgent_MD5Update(&package_md5_ctx, USART_RX_BUF2+PKT_HEAD_SIZE, dat_len);
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
 	if (memcmp(package_md5_calc, p_oil_pro->pro_crc, SSL_MAX_LEN) != 0) {
@@ -286,7 +293,7 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 					k = 0;
 					for (j=0; j<1024; j++) {// u8变成u16后的字节数据					   
 						iapf0 = *(u16*)(SYS_APP_SAVE_ADDR_BASE+k+g_ota_recv_sum);
-						iapf1 = *(u16*)(USART_RX_BUF+16+k);
+						iapf1 = *(u16*)(USART_RX_BUF2+16+k);
 						
 						if (iapf0 != iapf1) {
 							break;
@@ -298,23 +305,25 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 		return;// TBD Enable
 	}
 
-	memcpy(p_oil_pro->pro_head, (char*)USART_RX_BUF, PKT_HEAD_SIZE);
+	memcpy(p_oil_pro->pro_head, (char*)USART_RX_BUF2, PKT_HEAD_SIZE);
 	u1_printf("pro_head = %s\n", p_oil_pro->pro_head);
 	
-	memcpy(p_oil_pro->dev_id, (char*)USART_RX_BUF+PKT_HEAD_SIZE, PKT_DEVID_SIZE);
+	memcpy(p_oil_pro->dev_id, (char*)USART_RX_BUF2+PKT_HEAD_SIZE, PKT_DEVID_SIZE);
 	u1_printf("dev_id = %s\n", p_oil_pro->dev_id);
 	
-	memcpy(&p_oil_pro->pro_cmd, (char*)USART_RX_BUF+PKT_HEAD_SIZE+PKT_DEVID_SIZE, PKT_CMD_SIZE);
+	memcpy(&p_oil_pro->pro_cmd, (char*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE, PKT_CMD_SIZE);
 	u1_printf("pro_cmd = %s\n", p_oil_pro->pro_cmd);
 
-	p_oil_pro->data_len = (USART_RX_STA&0xFFFF) - (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE);
+	p_oil_pro->data_len = (USART_RX_STA2&0xFFFF) - (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE);
 
 	if (0x02 == p_oil_pro->pro_cmd) {
 		if (p_oil_pro->data_len != 3) {// Max 3Bytes
 			return;
 		} else {
-			u8 *p_size_data = USART_RX_BUF+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE;
+			u8 *p_size_data = USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE;
 			g_ota_bin_size = ((*(p_size_data))<<16) + ((*(p_size_data+1))<<8) + *(p_size_data+2);
+			
+			g_ota_recv_sum = 0;
 		}
 	} else if (0x03 == p_oil_pro->pro_cmd) {
 		if (p_oil_pro->data_len > 2049) {// Max: 1B PackNum + 2048B Data
@@ -323,27 +332,27 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 		if (p_oil_pro->data_len != 0) {
 			while (USART_RX_STA_BAK);
 			
-			memcpy(USART_RX_BUF_BAK, (char*)USART_RX_BUF+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE, p_oil_pro->data_len);
+			memcpy(USART_RX_BUF_BAK, (char*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE, p_oil_pro->data_len);
 			p_oil_pro->p_data = (u8*)USART_RX_BUF_BAK;
 			USART_RX_STA_BAK = p_oil_pro->data_len;
 			USART_RX_STA_BAK |= 1<<19;
 		}
 	}
 	
-	memcpy(p_oil_pro->pro_tail, (char*)USART_RX_BUF+((USART_RX_STA&0xFFFF) - PKT_TAIL_SIZE), PKT_TAIL_SIZE);
+	memcpy(p_oil_pro->pro_tail, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - PKT_TAIL_SIZE), PKT_TAIL_SIZE);
 	u1_printf("pro_tail = %s\n", p_oil_pro->pro_tail);
 }
 
 void process_app_cmds(void)
 {
-	if (0x80000 == (USART_RX_STA&(1<<19))) {
-		if (('S' == USART_RX_BUF[0]) && ('D' == USART_RX_BUF[((USART_RX_STA&0xFFFF) - 1)])) {
+	if (0x80000 == (USART_RX_STA2&(1<<19))) {
+		if (('S' == USART_RX_BUF2[0]) && ('D' == USART_RX_BUF2[((USART_RX_STA2&0xFFFF) - 1)])) {
 			memset(&recv_pack, 0, sizeof(OIL_PRO));
 			parse_oil_pro(&recv_pack);
 
-			USART_RX_STA = 0;
-			DMA_SetCurrDataCounter(DMA1_Channel5, U1_DMA_R_LEN);
-			DMA_Cmd(DMA1_Channel5, ENABLE);
+			USART_RX_STA2 = 0;
+			// DMA_SetCurrDataCounter(DMA1_Channel5, U1_DMA_R_LEN);
+			// DMA_Cmd(DMA1_Channel5, ENABLE);
 		}
 	}
 }
@@ -367,7 +376,7 @@ void app_cmds_task(void *p_arg)
 
 		if (16 == i) {
 			i = 100;
-			//UART1_AdValReport(i, ad_val);
+			UART1_AdValReport(i, ad_val);
 		}
 
 		ad_val[i] = (SPI_Read(i)) & 0xFFF;

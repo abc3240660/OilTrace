@@ -25,7 +25,7 @@
 //3,增加了USART_MAX_RECV_LEN,用于定义串口最大允许接收的字节数(不大于2的14次方)
 //4,修改了EN_USART1_RX的使能方式
 ////////////////////////////////////////////////////////////////////////////////// 	
-#define USART_MAX_RECV_LEN  			1024*12  	//定义最大接收字节数 200
+#define USART_MAX_RECV_LEN  			1024*4  	//定义最大接收字节数 200
 #define UART5_MAX_SEND_LEN				400
 
 #define USART_REC_LEN  			4096  	//定义最大接收字节数 200
@@ -40,10 +40,13 @@
 
 extern u8  UART5_TX_BUF[UART5_MAX_SEND_LEN];
 extern u8* USART_RX_BUF;
+extern u8* USART_RX_BUF2;
 extern u8* USART_RX_BUF_BAK;
 extern u32 USART_RX_STA;         		//接收状态标记	
+extern u32 USART_RX_STA2;
 //如果想串口中断接收，请不要注释以下宏定义
 void uart_init(u32 bound);
+void uart2_init(u32 bound);
 void u1_printf(char* fmt,...);
 void UART1_AdValReport(u8 ch, u16 *val);
 void UART1_ReportTestSta(void);
