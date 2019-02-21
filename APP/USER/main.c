@@ -9,7 +9,7 @@
 #include "dma.h"
 #include "iap.h"
 #include "gagent_md5.h"
-#include "stmflash.h"
+#include "iap.h"
 #include "w25qxx.h"
 #include "ad.h"
 
@@ -206,10 +206,6 @@ void iap_task(void *p_arg)
 	OS_ERR err;
 	
 	u8 i = 0;
-	u8 md5_pass = 1;
-	u8 bin_md5_calc[SSL_MAX_LEN];
-
-	MD5_CTX g_ota_md5_ctx;
 	
 	while (1) {
 		if (0x80000 == (USART_RX_STA_BAK&(1<<19))) {
@@ -285,23 +281,6 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
 	if (memcmp(package_md5_calc, p_oil_pro->pro_crc, SSL_MAX_LEN) != 0) {
-				u16 i;
-				u32 j,k;
-				u16 iapf0,iapf1;
-#if 1
-				//for (i=0; i<100; i++) {// 不超过100K程序
-					k = 0;
-					for (j=0; j<1024; j++) {// u8变成u16后的字节数据					   
-						iapf0 = *(u16*)(SYS_APP_SAVE_ADDR_BASE+k+g_ota_recv_sum);
-						iapf1 = *(u16*)(USART_RX_BUF2+16+k);
-						
-						if (iapf0 != iapf1) {
-							break;
-						}
-						k += 2;
-					}
-				//}
-#endif
 		return;// TBD Enable
 	}
 
@@ -361,7 +340,6 @@ void process_app_cmds(void)
 void app_cmds_task(void *p_arg)
 {
 	u8 i = 0;
-	u16 val = 300;
 	u16 w25q_type = 0;
 	
 	OS_ERR err;
@@ -375,7 +353,7 @@ void app_cmds_task(void *p_arg)
 		process_app_cmds();
 
 		if (16 == i) {
-			i = 100;
+			i = 0;
 			UART1_AdValReport(i, ad_val);
 		}
 
@@ -386,7 +364,7 @@ void app_cmds_task(void *p_arg)
 			i++;
 		}
 		
-		OSTimeDlyHMSM(0,0,0,100,OS_OPT_TIME_PERIODIC,&err);//延时500ms
-		OSTimeDlyHMSM(0,0,0,100,OS_OPT_TIME_PERIODIC,&err);//延时500ms
+		OSTimeDlyHMSM(0,0,0,30,OS_OPT_TIME_PERIODIC,&err);//延时500ms
+		// OSTimeDlyHMSM(0,0,0,100,OS_OPT_TIME_PERIODIC,&err);//延时500ms
 	}
 }
