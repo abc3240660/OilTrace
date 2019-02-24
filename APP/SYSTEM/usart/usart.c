@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "malloc.h"
 #include "gagent_md5.h"
+#include "rtc.h"
 ////////////////////////////////////////////////////////////////////////////////// 	 
 //如果使用os,则包括下面的头文件即可.
 #if SYSTEM_SUPPORT_OS
@@ -322,6 +323,139 @@ void UART1_ReportTestSta(void)
 	buf[78] = 'D';
 
 	UART1_SendData(buf, 79);
+}
+
+void UART1_ParamsRequest(void)
+{
+	u32* p_cid =  NULL;
+	u8 buf[40] = {0};
+
+	u8* package_md5_calc =  NULL;
+	MD5_CTX package_md5_ctx;
+	
+	buf[0] = 'S';
+	buf[1] = 'T';
+	buf[2] = 'A';
+	
+	p_cid = (u32*)(buf+3);
+	*p_cid = *(vu32*)(0x1ffff7e8);
+	
+	p_cid = (u32*)(buf+7);
+	*p_cid = *(vu32*)(0x1ffff7ec);
+	
+	p_cid = (u32*)(buf+11);
+	*p_cid = *(vu32*)(0x1ffff7f0);
+
+	buf[15] = 0x06;
+	
+	buf[16] = 0x00;
+	
+	package_md5_calc = buf+17;
+	GAgent_MD5Init(&package_md5_ctx);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 14);
+  GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
+
+	buf[33] = 'E';
+	buf[34] = 'N';
+	buf[35] = 'D';
+
+	UART1_SendData(buf, 36);
+}
+
+void parse_rtc_time(u8* buf)
+{
+	u8 i = 0;
+	char tmp[64] = "";
+	
+	sprintf(tmp, "%.4d%.2d%.2d%.2d%.2d%.2d", calendar.w_year, calendar.w_month, calendar.w_date, calendar.hour, calendar.min, calendar.sec);
+	
+	for (i=0; i<7; i++) {
+		buf[i] = ((tmp[2*i+0]-'0') << 4) + (tmp[2*i+1]-'0');
+	}
+}
+
+void UART1_HeartBeat(void)
+{
+	u32* p_cid =  NULL;
+	u8 buf[60] = {0};
+
+	u8* package_md5_calc =  NULL;
+	MD5_CTX package_md5_ctx;
+	
+	buf[0] = 'S';
+	buf[1] = 'T';
+	buf[2] = 'A';
+	
+	p_cid = (u32*)(buf+3);
+	*p_cid = *(vu32*)(0x1ffff7e8);
+	
+	p_cid = (u32*)(buf+7);
+	*p_cid = *(vu32*)(0x1ffff7ec);
+	
+	p_cid = (u32*)(buf+11);
+	*p_cid = *(vu32*)(0x1ffff7f0);
+
+	buf[15] = 0x07;
+	
+	RTC_Get();
+
+	parse_rtc_time(buf+16);
+
+	package_md5_calc = buf+16+7;
+	GAgent_MD5Init(&package_md5_ctx);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 13+7);
+  GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
+
+	buf[32+7] = 'E';
+	buf[33+7] = 'N';
+	buf[34+7] = 'D';
+
+	UART1_SendData(buf, 35+7);
+}
+
+void UART1_AdValReportOffline(u8 ch, u16 *val)
+{
+	u8 i = 0;
+	u32* p_cid =  NULL;
+	u8 buf[100] = {0};
+
+	u8* package_md5_calc =  NULL;
+	MD5_CTX package_md5_ctx;
+	
+	buf[0] = 'S';
+	buf[1] = 'T';
+	buf[2] = 'A';
+	
+	p_cid = (u32*)(buf+3);
+	*p_cid = *(vu32*)(0x1ffff7e8);
+	
+	p_cid = (u32*)(buf+7);
+	*p_cid = *(vu32*)(0x1ffff7ec);
+	
+	p_cid = (u32*)(buf+11);
+	*p_cid = *(vu32*)(0x1ffff7f0);
+
+	buf[15] = 0x05;
+	
+	RTC_Get();
+
+	parse_rtc_time(buf+16);
+	
+	for (i=0; i<22; i++) {
+		buf[23+i*2] = (u8)(val[i]>>8);
+		buf[23+i*2+1] = (u8)(val[i]&0xFF);
+	}
+
+	package_md5_calc = buf+67;
+	GAgent_MD5Init(&package_md5_ctx);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 64);
+  GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
+	
+	buf[83] = 'E';
+	buf[84] = 'N';
+	buf[85] = 'D';
+
+	UART1_SendData(buf, 86);
 }
 
 void UART1_ReportOtaBinSta(u8 md5_res)

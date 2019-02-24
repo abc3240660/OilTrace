@@ -50,6 +50,9 @@ void uart2_init(u32 bound);
 void u1_printf(char* fmt,...);
 void UART1_AdValReport(u8 ch, u16 *val);
 void UART1_ReportTestSta(void);
+void UART1_HeartBeat(void);
+void UART1_ParamsRequest(void);
+void UART1_AdValReportOffline(u8 ch, u16 *val);
 
 #endif
 

@@ -22,6 +22,8 @@ extern u16 g_ota_pg_numid;
 
 extern u8 g_after_rx_intr;
 
+u32 os_jiffies = 0;
+
 void TIM3_Int_Init(u16 arr,u16 psc)
 {
 	TIM_TimeBaseInitTypeDef	TIM_TimeBaseInitStructure;
@@ -48,7 +50,10 @@ void TIM3_IRQHandler(void)
 {
 	if(TIM_GetITStatus(TIM3,TIM_IT_Update)!=RESET)
 	{
-		//OS_TimeMS++;
+		os_jiffies++;
+		if (os_jiffies >= 10000) {
+			os_jiffies = 0;
+		}
 	}
 	TIM_ClearITPendingBit(TIM3,TIM_IT_Update);
 }

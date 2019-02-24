@@ -11,6 +11,7 @@
 #include "iap.h"
 #include "w25qxx.h"
 #include "ad.h"
+#include "rtc.h"
 
 #define PKT_HEAD_SIZE 3
 #define PKT_DEVID_SIZE 12
@@ -80,7 +81,28 @@ OIL_PRO recv_pack;
 
 u32 USART_RX_STA_BAK = 0;
 
-u16 ad_val[16];
+u16 ad_val[22];
+float	ad_val_f[22];
+
+extern u32 os_jiffies;
+
+// range
+float ran_max_val[22] = {0};
+float ran_min_val[22] = {0};
+// warning
+float war_max_val[22] = {0};
+float war_min_val[22] = {0};
+
+u8 war_mode[22] = {0};
+
+u16 report_gap = 0;
+u16 hbeat_gap = 0;
+
+u8 config_ok = 0;
+
+u32 time_start_hbeat = 0;
+u32 time_start_report = 0;
+u32 time_start_srv_hbeat = 0;
 
 int main(void)
 {	
@@ -94,7 +116,7 @@ int main(void)
 
 	my_mem_init(SRAMIN); 	//初始化内部内存池
 	
-	//TIM3_Int_Init(9999, 7199);
+	TIM3_Int_Init(999, 7199);
 	uart_init(115200);	 	//串口初始化为115200
 	//uart2_init(115200);
 	//Usart_DMA_Init();
@@ -104,11 +126,18 @@ int main(void)
 //		delay_ms(1000);
 //	}
 	
+	RTC_Init();
+	RTC_Get();
+
 	W25QXX_Init();
 	
 	// SPI_MCP3204_Init();
 	AD3204_Init();
 
+	// UART1_HeartBeat();
+	UART1_ParamsRequest();
+	time_start_srv_hbeat = os_jiffies;
+	//UART1_HeartBeat();
 	//UART1_ReportTestSta();
 	
 	OSInit(&err);		//初始化UCOSIII
@@ -247,6 +276,52 @@ void iap_task(void *p_arg)
 	}
 }
 
+void parse_server_params(u8* data, u16 size)
+{
+	u8 j = 0;
+	u16 i = 0;
+
+	if (209 == size) {
+		_calendar_obj svr_time;
+		
+		config_ok = 1;
+		time_start_hbeat = os_jiffies;
+		time_start_report = os_jiffies;
+		
+		memset(&svr_time, 0, sizeof(_calendar_obj));
+		
+		svr_time.w_year  = (data[0]>>4)*1000 + (data[0]&0xF)*100 + (data[1]>>4)*10 + (data[1]&0xF);
+		svr_time.w_month = (data[2]>>4)*10 + (data[2]&0xF);
+		svr_time.w_date  = (data[3]>>4)*10 + (data[3]&0xF);
+
+		svr_time.hour  = (data[4]>>4)*10 + (data[4]&0xF);
+		svr_time.min   = (data[5]>>4)*10 + (data[5]&0xF);
+		svr_time.sec   = (data[6]>>4)*10 + (data[6]&0xF);
+		
+		RTC_Set(svr_time.w_year,svr_time.w_month,svr_time.w_date,svr_time.hour,svr_time.min,svr_time.sec);  //设置时间
+
+		report_gap = (data[7+1]<<8) + data[7+0];
+		hbeat_gap  = (data[7+3]<<8) + data[7+2];
+		
+		if (report_gap < 500) {
+			report_gap = 500;// 500ms
+		}
+
+		if (hbeat_gap < 1) {
+			hbeat_gap = 1;// 1s
+		}
+		
+		for (i=0; i<22; i++) {
+			ran_max_val[j] = (data[11+9*i+0]*2 + (data[11+9*i+1]>>7)) + (float)(data[11+9*i+1]&0x7F)/100;
+			ran_min_val[j] = (data[11+9*i+2]*2 + (data[11+9*i+3]>>7)) + (float)(data[11+9*i+3]&0x7F)/100;
+			war_max_val[j] = (data[11+9*i+4]*2 + (data[11+9*i+5]>>7)) + (float)(data[11+9*i+5]&0x7F)/100;
+			war_min_val[j] = (data[11+9*i+6]*2 + (data[11+9*i+7]>>7)) + (float)(data[11+9*i+7]&0x7F)/100;
+			war_mode[j] = data[11+9*i+7];
+			j++;
+		}
+	}
+}
+
 void parse_oil_pro(OIL_PRO *p_oil_pro)
 {
 	u16 dat_len = 0;
@@ -315,6 +390,11 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 			USART_RX_STA_BAK = p_oil_pro->data_len;
 			USART_RX_STA_BAK |= 1<<19;
 		}
+	} else if (0x06 == p_oil_pro->pro_cmd) {
+		parse_server_params((u8*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE, p_oil_pro->data_len);
+	} else if (0x07 == p_oil_pro->pro_cmd) {
+		// heart beat
+		time_start_srv_hbeat = os_jiffies;
 	}
 	
 	memcpy(p_oil_pro->pro_tail, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - PKT_TAIL_SIZE), PKT_TAIL_SIZE);
@@ -334,12 +414,34 @@ void process_app_cmds(void)
 		}
 	}
 }
+
+// timeout unit: ms
+// timeout = 100ms * N (N >= 1)
+u8 is_timeout(u32 time_start, u32 timeout)
+{
+	if (os_jiffies > time_start) {
+		if ((os_jiffies-time_start) > (timeout / 100)) {
+			return 1;
+		}
+	} else {
+		if ((10000-time_start+os_jiffies) > (timeout / 100)) {
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
 // 每隔2秒更新一次温度信息
 // 该函数中的温度信息应全部改为从温度棒读取
 void app_cmds_task(void *p_arg)
 {
 	u8 i = 0;
 	u16 w25q_type = 0;
+	
+	u8 triger_hbeat = 0;
+	u8 triger_report = 0;
+	u8 scan_all = 0;
 	
 	OS_ERR err;
 
@@ -351,19 +453,43 @@ void app_cmds_task(void *p_arg)
 		
 		process_app_cmds();
 
-		if (16 == i) {
+		if (1 == config_ok) {
+			if (is_timeout(time_start_hbeat, hbeat_gap*1000)) {
+				triger_hbeat = 1;
+				time_start_hbeat = os_jiffies;
+			}
+			if (is_timeout(time_start_report, report_gap)) {
+				triger_report = 1;
+				time_start_report = os_jiffies;
+			}
+		} else {
+			UART1_ParamsRequest();
+		}
+
+		if (1 == triger_report) {
+			if (1 == scan_all) {
+				triger_report = 0;
+				UART1_AdValReport(i, ad_val);
+			}
+		}
+		
+		if (1 == triger_hbeat) {
+			triger_hbeat = 0;
+			UART1_HeartBeat();
+		}
+
+		if (i >= 16) {
 			i = 0;
-			UART1_AdValReport(i, ad_val);
+			scan_all = 1;
+			// UART1_AdValReportOffline(i, ad_val);
 		}
 
 		ad_val[i] = (SPI_Read(i)) & 0xFFF;
-		// float_val =((float)ad_val[i]/4096)*2.5;
+		ad_val_f[i] = ((float)ad_val[i]/4096)*2.5*10;
 
-		if (i != 100) {
-			i++;
-		}
+		i++;
 		
+		//OSTimeDlyHMSM(0,0,0,30,OS_OPT_TIME_PERIODIC,&err);//延时500ms
 		OSTimeDlyHMSM(0,0,0,30,OS_OPT_TIME_PERIODIC,&err);//延时500ms
-		// OSTimeDlyHMSM(0,0,0,100,OS_OPT_TIME_PERIODIC,&err);//延时500ms
 	}
 }
