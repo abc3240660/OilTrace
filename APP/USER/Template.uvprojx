@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\FWLIB\STM32F10x_FWLib\inc;..\HARDWARE\KEY;..\HARDWARE\FLASH;..\HARDWARE\TIMER;..\MALLOC;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M3\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M3\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M3\Generic\RealView;..\HARDWARE\DMA;..\HARDWARE\STMFLASH;..\HARDWARE\IAP;..\HARDWARE\SPI;..\HARDWARE\MCP3204;..\HARDWARE\W25QXX;..\HARDWARE\AD3204</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\FWLIB\STM32F10x_FWLib\inc;..\HARDWARE\KEY;..\HARDWARE\FLASH;..\HARDWARE\TIMER;..\MALLOC;..\UCOSIII\uC-CPU;..\UCOSIII\uC-LIB;..\UCOSIII\uCOS-III;..\UCOSIII\UCOS_BSP;..\UCOSIII\uCOS_CONFIG;..\UCOSIII\uCOS-III\Source;..\UCOSIII\uC-CPU\ARM-Cortex-M3\RealView;..\UCOSIII\uC-LIB\Ports\ARM-Cortex-M3\RealView;..\UCOSIII\uCOS-III\Ports\ARM-Cortex-M3\Generic\RealView;..\HARDWARE\DMA;..\HARDWARE\STMFLASH;..\HARDWARE\IAP;..\HARDWARE\SPI;..\HARDWARE\MCP3204;..\HARDWARE\W25QXX;..\HARDWARE\AD3204;..\HARDWARE\LIB</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -467,6 +467,11 @@
               <FileName>ad.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\AD3204\ad.c</FilePath>
+            </File>
+            <File>
+              <FileName>IAP.lib</FileName>
+              <FileType>4</FileType>
+              <FilePath>..\HARDWARE\LIB\IAP.lib</FilePath>
             </File>
           </Files>
         </Group>
@@ -787,21 +792,6 @@
               <FileName>os_cfg_app.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\UCOSIII\uCOS_CONFIG\os_cfg_app.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>LIB</GroupName>
-          <Files>
-            <File>
-              <FileName>stmflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\STMFLASH\stmflash.c</FilePath>
-            </File>
-            <File>
-              <FileName>iap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\IAP\iap.c</FilePath>
             </File>
           </Files>
         </Group>

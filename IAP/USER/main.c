@@ -108,19 +108,6 @@ int main(void)
 			
 			delay_ms(30);
 			
-			for (i=0; i<100; i++) {// 不超过100K程序
-				k = 0;
-				for (j=0; j<1024; j++) {// u8变成u16后的字节数据					   
-					iapf0 = *(u16*)(SYS_APP_SAVE_ADDR_BASE+k+i*2048);
-					iapf1 = *(u16*)(SYS_APP_BAK_SAVE_ADDR_BASE+k+i*2048);
-					
-					if (iapf0 != iapf1) {
-						g_ota_bin_size = 0;
-					}
-					k += 2;
-				}
-			}
-			
 			// printf("校验完毕!\r\n");
 			UP_success();// 更新标志,下次直接从APP分区启动
 			
@@ -128,20 +115,6 @@ int main(void)
 				iap_load_app(SYS_APP_SAVE_ADDR_BASE);// 执行更新后的APP代码
 			}
 		} else {// 否则执行跳转到出厂的APP程序
-
-			for (i=0; i<100; i++) {// 不超过100K程序
-				k = 0;
-				for (j=0; j<1024; j++) {// u8变成u16后的字节数据					   
-					iapf0 = *(u16*)(SYS_APP_SAVE_ADDR_BASE+k+i*2048);
-					iapf1 = *(u16*)(SYS_APP_BAK_SAVE_ADDR_BASE+k+i*2048);
-					
-					if (iapf0 != iapf1) {
-						g_ota_bin_size = 0;
-					}
-					k += 2;
-				}
-			}
-			
 			if (((*(vu32*)(SYS_APP_SAVE_ADDR_BASE+4))&0xFF000000) == 0x08000000) {// 判断是否为0X08XXXXXX.
 				iap_load_app(SYS_APP_SAVE_ADDR_BASE);// 执行出厂时的APP代码
 			}
