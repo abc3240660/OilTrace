@@ -48,11 +48,11 @@ extern u32 USART_RX_STA2;
 void uart_init(u32 bound);
 void uart2_init(u32 bound);
 void u1_printf(char* fmt,...);
-void UART1_AdValReport(u8 ch, u16 *val);
+void UART1_AdValReport(float *val);
 void UART1_ReportTestSta(void);
 void UART1_HeartBeat(void);
 void UART1_ParamsRequest(void);
-void UART1_AdValReportOffline(u8 ch, u16 *val);
+void UART1_AdValReportOffline(u16 *val);
 
 #endif
 

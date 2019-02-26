@@ -224,13 +224,16 @@ void UART1_SendData(u8 *data, u16 num)
 	RS485_TX_EN=0;// RECV MODE
 }
 
-void UART1_AdValReport(u8 ch, u16 *val)
+void UART1_AdValReport(float *val)
 {
 	u8 i = 0;
 	
 	u32* p_cid =  NULL;
 	u8 buf[80] = {0};
 
+	u8 decimal_val = 0;
+	u16 integer_val = 0;
+	
 	u8* package_md5_calc =  NULL;
 	MD5_CTX package_md5_ctx;
 	
@@ -250,8 +253,11 @@ void UART1_AdValReport(u8 ch, u16 *val)
 	buf[15] = 0x01;
 	
 	for (i=0; i<22; i++) {
-		buf[16+i*2] = (u8)(val[i]>>8);
-		buf[16+i*2+1] = (u8)(val[i]&0xFF);
+		integer_val = (u16)val[i];
+		decimal_val = (u16)((val[i]-integer_val)*100);
+
+		buf[16+i*2] = (u8)(integer_val>>1);
+		buf[16+i*2+1] = (u8)(integer_val&0x01 + decimal_val);
 	}
 
 	package_md5_calc = buf+60;
@@ -413,7 +419,7 @@ void UART1_HeartBeat(void)
 	UART1_SendData(buf, 35+7);
 }
 
-void UART1_AdValReportOffline(u8 ch, u16 *val)
+void UART1_AdValReportOffline(u16 *val)
 {
 	u8 i = 0;
 	u32* p_cid =  NULL;

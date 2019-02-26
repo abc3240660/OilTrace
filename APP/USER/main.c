@@ -81,28 +81,30 @@ OIL_PRO recv_pack;
 
 u32 USART_RX_STA_BAK = 0;
 
-u16 ad_val[22];
-float	ad_val_f[22];
+u16 ad_val[22] = {0};
+float	ad_val_f[22] = {0};
+
+float	measured_val[22];
 
 extern u32 os_jiffies;
-
-// range
-float ran_max_val[22] = {0};
-float ran_min_val[22] = {0};
-// warning
-float war_max_val[22] = {0};
-float war_min_val[22] = {0};
-
-u8 war_mode[22] = {0};
 
 u16 report_gap = 0;
 u16 hbeat_gap = 0;
 
-u8 config_ok = 0;
+u8 net_ok = 0;
+u16 hbeat_cnt = 0;
 
 u32 time_start_hbeat = 0;
 u32 time_start_report = 0;
 u32 time_start_srv_hbeat = 0;
+
+extern SYS_ENV g_sys_env_old;
+extern SYS_ENV g_sys_env_new;
+
+// 0-not configed
+// 1-from spi flash
+// 2-from server
+u8 sys_env_mode = 0;
 
 int main(void)
 {	
@@ -131,6 +133,8 @@ int main(void)
 
 	W25QXX_Init();
 	
+	sys_env_dump();
+
 	// SPI_MCP3204_Init();
 	AD3204_Init();
 
@@ -284,7 +288,7 @@ void parse_server_params(u8* data, u16 size)
 	if (209 == size) {
 		_calendar_obj svr_time;
 		
-		config_ok = 1;
+		net_ok = 1;
 		time_start_hbeat = os_jiffies;
 		time_start_report = os_jiffies;
 		
@@ -303,8 +307,8 @@ void parse_server_params(u8* data, u16 size)
 		report_gap = (data[7+1]<<8) + data[7+0];
 		hbeat_gap  = (data[7+3]<<8) + data[7+2];
 		
-		if (report_gap < 500) {
-			report_gap = 500;// 500ms
+		if (report_gap < 250) {
+			report_gap = 250;// 500ms
 		}
 
 		if (hbeat_gap < 1) {
@@ -312,13 +316,15 @@ void parse_server_params(u8* data, u16 size)
 		}
 		
 		for (i=0; i<22; i++) {
-			ran_max_val[j] = (data[11+9*i+0]*2 + (data[11+9*i+1]>>7)) + (float)(data[11+9*i+1]&0x7F)/100;
-			ran_min_val[j] = (data[11+9*i+2]*2 + (data[11+9*i+3]>>7)) + (float)(data[11+9*i+3]&0x7F)/100;
-			war_max_val[j] = (data[11+9*i+4]*2 + (data[11+9*i+5]>>7)) + (float)(data[11+9*i+5]&0x7F)/100;
-			war_min_val[j] = (data[11+9*i+6]*2 + (data[11+9*i+7]>>7)) + (float)(data[11+9*i+7]&0x7F)/100;
-			war_mode[j] = data[11+9*i+7];
+			g_sys_env_new.ran_max[j] = (data[11+9*i+0]*2 + (data[11+9*i+1]>>7)) + (float)(data[11+9*i+1]&0x7F)/100;
+			g_sys_env_new.ran_min[j] = (data[11+9*i+2]*2 + (data[11+9*i+3]>>7)) + (float)(data[11+9*i+3]&0x7F)/100;
+			g_sys_env_new.war_max[j] = (data[11+9*i+4]*2 + (data[11+9*i+5]>>7)) + (float)(data[11+9*i+5]&0x7F)/100;
+			g_sys_env_new.war_min[j] = (data[11+9*i+6]*2 + (data[11+9*i+7]>>7)) + (float)(data[11+9*i+7]&0x7F)/100;
+			g_sys_env_new.war_mode[j] = data[11+9*i+7];
 			j++;
 		}
+
+		sys_env_update();
 	}
 }
 
@@ -394,6 +400,7 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 		parse_server_params((u8*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE, p_oil_pro->data_len);
 	} else if (0x07 == p_oil_pro->pro_cmd) {
 		// heart beat
+		hbeat_cnt = 0;
 		time_start_srv_hbeat = os_jiffies;
 	}
 	
@@ -437,6 +444,7 @@ u8 is_timeout(u32 time_start, u32 timeout)
 void app_cmds_task(void *p_arg)
 {
 	u8 i = 0;
+	u8 j = 0;
 	u16 w25q_type = 0;
 	
 	u8 triger_hbeat = 0;
@@ -453,11 +461,15 @@ void app_cmds_task(void *p_arg)
 		
 		process_app_cmds();
 
-		if (1 == config_ok) {
+		if (1 == net_ok) {
 			if (is_timeout(time_start_hbeat, hbeat_gap*1000)) {
 				triger_hbeat = 1;
 				time_start_hbeat = os_jiffies;
+			} else {
+				// send offline warning to server
+				// UART1_AdValReportOffline(ad_val);
 			}
+
 			if (is_timeout(time_start_report, report_gap)) {
 				triger_report = 1;
 				time_start_report = os_jiffies;
@@ -469,7 +481,16 @@ void app_cmds_task(void *p_arg)
 		if (1 == triger_report) {
 			if (1 == scan_all) {
 				triger_report = 0;
-				UART1_AdValReport(i, ad_val);
+
+				for (j=0; j<22; j++) {
+					if (1 == sys_env_mode) {
+						measured_val[j] = (ad_val_f[j]*(g_sys_env_old.ran_max[j]-g_sys_env_old.ran_min[j])/20000)+g_sys_env_old.ran_min[j];
+					} else if (2 == sys_env_mode) {
+						measured_val[j] = (ad_val_f[j]*(g_sys_env_new.ran_max[j]-g_sys_env_new.ran_min[j])/20000)+g_sys_env_new.ran_min[j];
+					}
+				}
+				
+				UART1_AdValReport(measured_val);
 			}
 		}
 		
@@ -478,18 +499,23 @@ void app_cmds_task(void *p_arg)
 			UART1_HeartBeat();
 		}
 
-		if (i >= 16) {
+		if (i >= 22) {
 			i = 0;
 			scan_all = 1;
-			// UART1_AdValReportOffline(i, ad_val);
 		}
 
 		ad_val[i] = (SPI_Read(i)) & 0xFFF;
-		ad_val_f[i] = ((float)ad_val[i]/4096)*2.5*10;
+		ad_val_f[i] = ((float)ad_val[i]/4096)*2.5*10000;
 
 		i++;
 		
-		//OSTimeDlyHMSM(0,0,0,30,OS_OPT_TIME_PERIODIC,&err);//—” ±500ms
-		OSTimeDlyHMSM(0,0,0,30,OS_OPT_TIME_PERIODIC,&err);//—” ±500ms
+		if (hbeat_cnt >= 5000) {// 50s
+			net_ok = 0;
+			// save offline warning&time into flash
+		} else {
+			hbeat_cnt++;
+		}
+
+		OSTimeDlyHMSM(0,0,0,10,OS_OPT_TIME_PERIODIC,&err);//—” ±10ms
 	}
 }
