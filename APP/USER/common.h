@@ -21,6 +21,10 @@
 
 #define W25Q_SECTOR_SIZE	4096
 
+#define OFFLINE_SIZE_PER	64
+
+#define OFFLINE_OFFSET	W25Q_SECTOR_SIZE
+
 typedef struct {
 	u16 active_flag;
 	float ran_max[22];
@@ -29,6 +33,11 @@ typedef struct {
 	float war_min[22];
 	u8 war_mode[22];
 } SYS_ENV;
+
+typedef struct {
+	u8 systime[7];
+	float mes_val[22];
+} OFFLINE_DAT;
 
 void sys_env_dump(void);
 void sys_env_update(void);
