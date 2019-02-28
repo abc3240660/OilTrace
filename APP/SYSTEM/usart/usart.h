@@ -2,6 +2,7 @@
 #define __USART_H
 #include "stdio.h"	
 #include "sys.h" 
+#include "common.h"
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //Mini STM32开发板
@@ -52,7 +53,7 @@ void UART1_AdValReport(float *val);
 void UART1_ReportTestSta(void);
 void UART1_HeartBeat(void);
 void UART1_ParamsRequest(void);
-void UART1_AdValReportOffline(u16 *val);
+void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat);
 
 #endif
 

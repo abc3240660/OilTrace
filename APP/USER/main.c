@@ -84,12 +84,13 @@ u32 USART_RX_STA_BAK = 0;
 u16 ad_val[22] = {0};
 float	ad_val_f[22] = {0};
 
+u8 offline_save[44] = {0};
 float	measured_val[22];
 
 extern u32 os_jiffies;
 
 u16 report_gap = 0;
-u16 hbeat_gap = 0;
+u16 hbeat_gap = 5;
 
 u8 net_ok = 0;
 u16 hbeat_cnt = 0;
@@ -106,8 +107,13 @@ extern SYS_ENV g_sys_env_new;
 // 2-from server
 u8 sys_env_mode = 0;
 
+extern u32 avaliable_count_64b;
+
+OS_MUTEX g_sem_w25q;
+
 int main(void)
 {	
+	OFFLINE_DAT off_dat;
 	OS_ERR err;
 	CPU_SR_ALLOC();	
 	
@@ -120,7 +126,7 @@ int main(void)
 	
 	TIM3_Int_Init(999, 7199);
 	uart_init(115200);	 	//串口初始化为115200
-	//uart2_init(115200);
+	uart2_init(115200);
 	//Usart_DMA_Init();
 
 //	while(1) {
@@ -143,6 +149,17 @@ int main(void)
 	time_start_srv_hbeat = os_jiffies;
 	//UART1_HeartBeat();
 	//UART1_ReportTestSta();
+	
+	offline_init();
+
+#if 0
+	while(1) {
+		offline_write(measured_val);
+		offline_dump(&off_dat);
+		//printf("Welcom to OilTrace!!!\n");
+		delay_ms(2);
+	}
+#endif
 	
 	OSInit(&err);		//初始化UCOSIII
 	OS_CRITICAL_ENTER();//进入临界区
@@ -188,6 +205,9 @@ void start_task(void *p_arg)
 
 	OS_CRITICAL_ENTER();	//进入临界区
 
+	OSMutexCreate((OS_MUTEX*)&g_sem_w25q,
+        (CPU_CHAR*)"sem_flash",
+        (OS_ERR*)&err);
 #if 1
 	// 温度读取任务
 	OSTaskCreate((OS_TCB*     )&AppCmdsTaskTCB,		
@@ -270,6 +290,7 @@ void iap_task(void *p_arg)
 		}
 		
 		if (30 == i++) {
+			printf("Welcom to OilTrace!!!\n");
 			i = 0;
 			if (g_printf_enable != 0) {
 				u1_printf("APP1 STA = %X\n", USART_RX_STA2);
@@ -311,16 +332,16 @@ void parse_server_params(u8* data, u16 size)
 			report_gap = 250;// 500ms
 		}
 
-		if (hbeat_gap < 1) {
-			hbeat_gap = 1;// 1s
+		if (hbeat_gap < 5) {
+			hbeat_gap = 5;// 1s
 		}
 		
 		for (i=0; i<22; i++) {
-			g_sys_env_new.ran_max[j] = (data[11+9*i+0]*2 + (data[11+9*i+1]>>7)) + (float)(data[11+9*i+1]&0x7F)/100;
-			g_sys_env_new.ran_min[j] = (data[11+9*i+2]*2 + (data[11+9*i+3]>>7)) + (float)(data[11+9*i+3]&0x7F)/100;
-			g_sys_env_new.war_max[j] = (data[11+9*i+4]*2 + (data[11+9*i+5]>>7)) + (float)(data[11+9*i+5]&0x7F)/100;
-			g_sys_env_new.war_min[j] = (data[11+9*i+6]*2 + (data[11+9*i+7]>>7)) + (float)(data[11+9*i+7]&0x7F)/100;
-			g_sys_env_new.war_mode[j] = data[11+9*i+7];
+			g_sys_env_new.war_max[j] = (data[11+9*i+0]*2 + (data[11+9*i+1]>>7)) + (float)(data[11+9*i+1]&0x7F)/100;
+			g_sys_env_new.war_min[j] = (data[11+9*i+2]*2 + (data[11+9*i+3]>>7)) + (float)(data[11+9*i+3]&0x7F)/100;
+			g_sys_env_new.ran_max[j] = (data[11+9*i+4]*2 + (data[11+9*i+5]>>7)) + (float)(data[11+9*i+5]&0x7F)/100;
+			g_sys_env_new.ran_min[j] = (data[11+9*i+6]*2 + (data[11+9*i+7]>>7)) + (float)(data[11+9*i+7]&0x7F)/100;
+			g_sys_env_new.war_mode[j] = data[11+9*i+8];
 			j++;
 		}
 
@@ -426,7 +447,7 @@ void process_app_cmds(void)
 // timeout = 100ms * N (N >= 1)
 u8 is_timeout(u32 time_start, u32 timeout)
 {
-	if (os_jiffies > time_start) {
+	if (os_jiffies >= time_start) {
 		if ((os_jiffies-time_start) > (timeout / 100)) {
 			return 1;
 		}
@@ -452,49 +473,47 @@ void app_cmds_task(void *p_arg)
 	u8 scan_all = 0;
 	
 	OS_ERR err;
+	OFFLINE_DAT off_dat;
 
 	w25q_type = W25QXX_ReadID();
-	
+
 	while(1)
 	{
-		LED0 = !LED0;
-		
 		process_app_cmds();
 
 		if (1 == net_ok) {
-			if (is_timeout(time_start_hbeat, hbeat_gap*1000)) {
-				triger_hbeat = 1;
-				time_start_hbeat = os_jiffies;
-			} else {
-				// send offline warning to server
-				// UART1_AdValReportOffline(ad_val);
-			}
-
 			if (is_timeout(time_start_report, report_gap)) {
 				triger_report = 1;
 				time_start_report = os_jiffies;
+			} else {
+				if (avaliable_count_64b > 0) {
+					// send offline warning to server
+					offline_dump(&off_dat);
+					UART1_AdValReportOffline(&off_dat);
+				}
 			}
 		} else {
-			UART1_ParamsRequest();
+			//UART1_ParamsRequest();
 		}
-
+		
+		if (is_timeout(time_start_hbeat, hbeat_gap*1000)) {
+			triger_hbeat = 1;
+			time_start_hbeat = os_jiffies;
+		}
+			
 		if (1 == triger_report) {
-			if (1 == scan_all) {
+			if (22 == i) {
 				triger_report = 0;
-
-				for (j=0; j<22; j++) {
-					if (1 == sys_env_mode) {
-						measured_val[j] = (ad_val_f[j]*(g_sys_env_old.ran_max[j]-g_sys_env_old.ran_min[j])/20000)+g_sys_env_old.ran_min[j];
-					} else if (2 == sys_env_mode) {
-						measured_val[j] = (ad_val_f[j]*(g_sys_env_new.ran_max[j]-g_sys_env_new.ran_min[j])/20000)+g_sys_env_new.ran_min[j];
-					}
-				}
 				
+				LED0 = !LED0;
+
 				UART1_AdValReport(measured_val);
 			}
 		}
 		
 		if (1 == triger_hbeat) {
+			// LED0 = !LED0;
+			printf("Send HeartBeat\n");
 			triger_hbeat = 0;
 			UART1_HeartBeat();
 		}
@@ -506,13 +525,62 @@ void app_cmds_task(void *p_arg)
 
 		ad_val[i] = (SPI_Read(i)) & 0xFFF;
 		ad_val_f[i] = ((float)ad_val[i]/4096)*2.5*10000;
-
+		
+		if (1 == sys_env_mode) {
+			measured_val[i] = (ad_val_f[i]*(g_sys_env_old.ran_max[i]-g_sys_env_old.ran_min[i])/20000)+g_sys_env_old.ran_min[i];
+		} else if (2 == sys_env_mode) {
+			measured_val[i] = (ad_val_f[i]*(g_sys_env_new.ran_max[i]-g_sys_env_new.ran_min[i])/20000)+g_sys_env_new.ran_min[i];
+		} else {
+			measured_val[i] = 0;
+		}
+				
 		i++;
 		
 		if (hbeat_cnt >= 5000) {// 50s
 			net_ok = 0;
+#if 1
 			// save offline warning&time into flash
+			if (22 == i) {
+				u8 warning_detect = 0;
+				for (j=0; j<22; j++) {
+					if (1 == sys_env_mode) {
+						if (1 == g_sys_env_old.war_mode[j]) {
+							if (measured_val[j] > g_sys_env_old.war_max[j]) {
+								warning_detect = 1;
+							}
+						} else if (2 == g_sys_env_old.war_mode[j]) {
+							if (measured_val[j] < g_sys_env_old.war_max[j]) {
+								warning_detect = 1;
+							}
+						} else if (3 == g_sys_env_old.war_mode[j]) {
+							if ((measured_val[j]>g_sys_env_old.war_max[j]) || (measured_val[j]<g_sys_env_old.war_min[j])) {
+								warning_detect = 1;
+							}
+						}
+					} else if (2 == sys_env_mode) {
+						if (1 == g_sys_env_new.war_mode[j]) {
+							if (measured_val[j] > g_sys_env_new.war_max[j]) {
+								warning_detect = 1;
+							}
+						} else if (2 == g_sys_env_new.war_mode[j]) {
+							if (measured_val[j] < g_sys_env_new.war_max[j]) {
+								warning_detect = 1;
+							}
+						} else if (3 == g_sys_env_new.war_mode[j]) {
+							if ((measured_val[j]>g_sys_env_new.war_max[j]) || (measured_val[j]<g_sys_env_new.war_min[j])) {
+								warning_detect = 1;
+							}
+						}
+					}
+				}
+				if (1 == warning_detect) {
+					warning_detect = 0;
+					offline_write(measured_val);
+				}
+			}
+#endif
 		} else {
+			net_ok = 1;
 			hbeat_cnt++;
 		}
 

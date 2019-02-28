@@ -32,10 +32,16 @@ void NMI_Handler(void)
  
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+	u8 t=0;
+	u32 i;
+
+	printf("HardFault_Handler!!!\n");
+	
+	while(1)
+	{
+		printf("HardFault_Handler!!!\n");
+		delay_ms(1000);
+ 	}
 }
  
 void MemManage_Handler(void)

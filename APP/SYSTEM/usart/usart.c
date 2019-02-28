@@ -176,7 +176,7 @@ void uart2_init(u32 bound){
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);	//使能USART1，GPIOA时钟
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);	//使能USART1，GPIOA时钟
 	
-	USART_DeInit(USART1);  //复位串口1
+	USART_DeInit(USART2);  //复位串口1
 	//USART1_TX   PA.2
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2; //PA.2
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -208,8 +208,18 @@ void UART1_SendData(u8 *data, u16 num)
 {
 	u16 t = 0;
 	u16 len = num;
-	
+	u16 try_cnt = 0;
+	u32 temp_sta = 0;
+
 	while(USART_RX_STA != 0) {
+		if (temp_sta != USART_RX_STA) {
+			try_cnt = 0;
+			temp_sta = USART_RX_STA;
+		} else {
+			if (try_cnt++ >= 2000) {
+				break;
+			}
+		}
 		delay_ms(1);
 	}
 
@@ -257,7 +267,7 @@ void UART1_AdValReport(float *val)
 		decimal_val = (u16)((val[i]-integer_val)*100);
 
 		buf[16+i*2] = (u8)(integer_val>>1);
-		buf[16+i*2+1] = (u8)(integer_val&0x01 + decimal_val);
+		buf[16+i*2+1] = (u8)((integer_val&0x01)*128 + decimal_val);
 	}
 
 	package_md5_calc = buf+60;
@@ -419,7 +429,7 @@ void UART1_HeartBeat(void)
 	UART1_SendData(buf, 35+7);
 }
 
-void UART1_AdValReportOffline(u16 *val)
+void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat)
 {
 	u8 i = 0;
 	u32* p_cid =  NULL;
@@ -443,14 +453,14 @@ void UART1_AdValReportOffline(u16 *val)
 
 	buf[15] = 0x05;
 	
-	RTC_Get();
-
-	parse_rtc_time(buf+16);
-	
-	for (i=0; i<22; i++) {
-		buf[23+i*2] = (u8)(val[i]>>8);
-		buf[23+i*2+1] = (u8)(val[i]&0xFF);
-	}
+	memcpy(buf+16, p_off_dat->systime, 7);
+	memcpy(buf+16+7, p_off_dat->mes_val, 44);
+//	RTC_Get();
+//	parse_rtc_time(buf+16);	
+//	for (i=0; i<22; i++) {
+//		buf[23+i*2] = (u8)(val[i]>>8);
+//		buf[23+i*2+1] = (u8)(val[i]&0xFF);
+//	}
 
 	package_md5_calc = buf+67;
 	GAgent_MD5Init(&package_md5_ctx);
@@ -512,6 +522,8 @@ void USART1_IRQHandler(void)                	//串口1中断服务程序
 	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)  //接收中断(接收到的数据必须是0x0d 0x0a结尾)
 	{
 		Res =USART_ReceiveData(USART1);	//读取接收到的数据
+		
+		USART_SendData(USART2, Res);
 		
 		if((USART_RX_STA&(1<<19))==0)//接收未完成
 		{

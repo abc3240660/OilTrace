@@ -36,10 +36,13 @@ typedef struct {
 
 typedef struct {
 	u8 systime[7];
-	float mes_val[22];
+	u8 mes_val[44];
 } OFFLINE_DAT;
 
 void sys_env_dump(void);
 void sys_env_update(void);
+void offline_write(float *val);
+void offline_dump(OFFLINE_DAT *p_off_dat);
+void offline_init(void);
 
 #endif /* __COMMON_H */
