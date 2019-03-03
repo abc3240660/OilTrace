@@ -12,6 +12,7 @@
 #include "w25qxx.h"
 #include "ad.h"
 #include "rtc.h"
+#include "key.h"
 
 #define PKT_HEAD_SIZE 3
 #define PKT_DEVID_SIZE 12
@@ -95,9 +96,23 @@ u16 hbeat_gap = 5;
 u8 net_ok = 0;
 u16 hbeat_cnt = 0;
 
+u32 time_start_exitline = 0;
 u32 time_start_hbeat = 0;
 u32 time_start_report = 0;
-u32 time_start_srv_hbeat = 0;
+
+u16 cnt_start_pc6 = 0;
+u16 cnt_start_pc7 = 0;
+u16 cnt_start_pc8 = 0;
+u16 cnt_start_pc9 = 0;
+u16 cnt_start_pc10 = 0;
+u16 cnt_start_pc11 = 0;
+
+extern u16 g_pc6_cnt;
+extern u16 g_pc7_cnt;
+extern u16 g_pc8_cnt;
+extern u16 g_pc9_cnt;
+extern u16 g_pc10_cnt;
+extern u16 g_pc11_cnt;
 
 extern SYS_ENV g_sys_env_old;
 extern SYS_ENV g_sys_env_new;
@@ -137,6 +152,8 @@ int main(void)
 	RTC_Init();
 	RTC_Get();
 
+	EC11_EXTI_Init();
+
 	W25QXX_Init();
 	
 	sys_env_dump();
@@ -146,9 +163,17 @@ int main(void)
 
 	// UART1_HeartBeat();
 	UART1_ParamsRequest();
-	time_start_srv_hbeat = os_jiffies;
 	//UART1_HeartBeat();
 	//UART1_ReportTestSta();
+	
+	cnt_start_pc6  = g_pc6_cnt;
+	cnt_start_pc7  = g_pc7_cnt;
+	cnt_start_pc8  = g_pc8_cnt;
+	cnt_start_pc9  = g_pc9_cnt;
+	cnt_start_pc10 = g_pc10_cnt;
+	cnt_start_pc11 = g_pc11_cnt;
+	
+	time_start_exitline = os_jiffies;
 	
 	offline_init();
 
@@ -422,7 +447,6 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 	} else if (0x07 == p_oil_pro->pro_cmd) {
 		// heart beat
 		hbeat_cnt = 0;
-		time_start_srv_hbeat = os_jiffies;
 	}
 	
 	memcpy(p_oil_pro->pro_tail, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - PKT_TAIL_SIZE), PKT_TAIL_SIZE);
@@ -460,6 +484,15 @@ u8 is_timeout(u32 time_start, u32 timeout)
 	return 0;
 }
 
+u16 calc_count_gap(u16 time_start, u16 time_end)
+{
+	if (time_end >= time_start) {
+		return (time_end-time_start);
+	} else {
+		return (10000-time_start+time_end);
+	}
+}
+
 // 每隔2秒更新一次温度信息
 // 该函数中的温度信息应全部改为从温度棒读取
 void app_cmds_task(void *p_arg)
@@ -474,7 +507,8 @@ void app_cmds_task(void *p_arg)
 	
 	OS_ERR err;
 	OFFLINE_DAT off_dat;
-
+	u16 exitintr_speed[6] = {0};
+	
 	w25q_type = W25QXX_ReadID();
 
 	while(1)
@@ -500,9 +534,27 @@ void app_cmds_task(void *p_arg)
 			triger_hbeat = 1;
 			time_start_hbeat = os_jiffies;
 		}
+		
+		// Unit: N * RisingLevel per 60s
+		if (is_timeout(time_start_exitline, 60*1000)) {
+			measured_val[16] = (float)calc_count_gap(cnt_start_pc6,  g_pc6_cnt);
+			measured_val[17] = (float)calc_count_gap(cnt_start_pc7,  g_pc7_cnt);
+			measured_val[18] = (float)calc_count_gap(cnt_start_pc8,  g_pc8_cnt);
+			measured_val[19] = (float)calc_count_gap(cnt_start_pc9,  g_pc9_cnt);
+			measured_val[20] = (float)calc_count_gap(cnt_start_pc10, g_pc10_cnt);
+			measured_val[21] = (float)calc_count_gap(cnt_start_pc11, g_pc11_cnt);
 			
+			cnt_start_pc6  = g_pc6_cnt;
+			cnt_start_pc7  = g_pc7_cnt;
+			cnt_start_pc8  = g_pc8_cnt;
+			cnt_start_pc9  = g_pc9_cnt;
+			cnt_start_pc10 = g_pc10_cnt;
+			cnt_start_pc11 = g_pc11_cnt;
+			time_start_exitline = os_jiffies;
+		}
+		
 		if (1 == triger_report) {
-			if (22 == i) {
+			if (16 == i) {
 				triger_report = 0;
 				
 				LED0 = !LED0;
@@ -518,7 +570,7 @@ void app_cmds_task(void *p_arg)
 			UART1_HeartBeat();
 		}
 
-		if (i >= 22) {
+		if (i >= 16) {
 			i = 0;
 			scan_all = 1;
 		}

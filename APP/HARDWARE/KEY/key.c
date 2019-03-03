@@ -1,0 +1,185 @@
+#include "key.h"
+#include "stm32f10x_exti.h"
+#include "common.h"
+
+u16 g_pc6_cnt = 0;
+u16 g_pc7_cnt = 0;
+u16 g_pc8_cnt = 0;
+u16 g_pc9_cnt = 0;
+u16 g_pc10_cnt = 0;
+u16 g_pc11_cnt = 0;
+
+//按键初始化函数
+void EC11KEY_Init(void) //IO初始化
+{ 
+ 	GPIO_InitTypeDef GPIO_InitStructure;
+ 
+ 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,ENABLE);//使能PORTA,PORTE时钟
+
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8;//KEY0-KEY1
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
+ 	GPIO_Init(GPIOC, &GPIO_InitStructure);//初始化GPIOE4,3
+	
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11;//KEY0-KEY1
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
+ 	GPIO_Init(GPIOC, &GPIO_InitStructure);//初始化GPIOE4,3
+}
+
+void EC11_EXTI_Init(void)
+{
+   	EXTI_InitTypeDef EXTI_InitStructure;
+ 	  NVIC_InitTypeDef NVIC_InitStructure;
+
+    EC11KEY_Init();	 //	按键端口初始化
+
+  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE);	//使能复用功能时钟
+
+    //GPIOC6
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource6);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line6;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+		
+    //GPIOC7
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource7);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line7;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+		
+    //GPIOC8
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource8);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line8;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+		
+    //GPIOC9
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource9);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line9;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+		
+    //GPIOC10
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource10);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line10;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+		
+    //GPIOC11
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC,GPIO_PinSource11);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line11;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;//EXTI_Trigger_Falling，EXTI_Trigger_Rising_Falling
+		EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;			//使能按键KEY1所在的外部中断通道
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;	//抢占优先级2 
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;					//子优先级1 
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
+  	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+}
+
+//外部中断3服务程序
+void EXTI9_5_IRQHandler(void)
+{	
+	if (EXTI_GetITStatus(EXTI_Line6) != RESET) {
+		g_pc6_cnt++;
+		if (g_pc6_cnt >= 10000) {
+			g_pc6_cnt = 0;
+		}
+		printf("EXTI_Line6\n");
+		EXTI_ClearITPendingBit(EXTI_Line6);  //清除LINE3上的中断标志位  
+	}
+	if (EXTI_GetITStatus(EXTI_Line7) != RESET) {
+		g_pc7_cnt++;
+		if (g_pc7_cnt >= 10000) {
+			g_pc7_cnt = 0;
+		}
+		printf("EXTI_Line7\n");
+		EXTI_ClearITPendingBit(EXTI_Line7);  //清除LINE3上的中断标志位  
+	}
+	if (EXTI_GetITStatus(EXTI_Line8) != RESET) {
+		g_pc8_cnt++;
+		if (g_pc8_cnt >= 10000) {
+			g_pc8_cnt = 0;
+		}
+		printf("EXTI_Line8\n");
+		EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE3上的中断标志位  
+	}
+	if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
+		g_pc9_cnt++;
+		if (g_pc9_cnt >= 10000) {
+			g_pc9_cnt = 0;
+		}
+		printf("EXTI_Line9\n");
+		EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE3上的中断标志位  
+	}
+}
+
+void EXTI15_10_IRQHandler(void)
+{	
+	if (EXTI_GetITStatus(EXTI_Line10) != RESET) {
+		g_pc10_cnt++;
+		if (g_pc10_cnt >= 10000) {
+			g_pc10_cnt = 0;
+		}
+		printf("EXTI_Line10\n");
+		EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE3上的中断标志位  
+	}
+	if (EXTI_GetITStatus(EXTI_Line11) != RESET) {
+		g_pc11_cnt++;
+		if (g_pc11_cnt >= 10000) {
+			g_pc11_cnt = 0;
+		}
+		printf("EXTI_Line11\n");
+		EXTI_ClearITPendingBit(EXTI_Line11);  //清除LINE3上的中断标志位  
+	}
+}
+
+/***************************END OF FILE***************************/
