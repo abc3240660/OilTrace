@@ -96,16 +96,8 @@ u16 hbeat_gap = 5;
 u8 net_ok = 0;
 u16 hbeat_cnt = 0;
 
-u32 time_start_exitline = 0;
 u32 time_start_hbeat = 0;
 u32 time_start_report = 0;
-
-u16 cnt_start_pc6 = 0;
-u16 cnt_start_pc7 = 0;
-u16 cnt_start_pc8 = 0;
-u16 cnt_start_pc9 = 0;
-u16 cnt_start_pc10 = 0;
-u16 cnt_start_pc11 = 0;
 
 extern u16 g_pc6_cnt;
 extern u16 g_pc7_cnt;
@@ -139,7 +131,8 @@ int main(void)
 
 	my_mem_init(SRAMIN); 	//初始化内部内存池
 	
-	TIM3_Int_Init(999, 7199);
+	// 10ms
+	TIM3_Int_Init(99, 7199);
 	uart_init(115200);	 	//串口初始化为115200
 	uart2_init(115200);
 	//Usart_DMA_Init();
@@ -165,15 +158,6 @@ int main(void)
 	UART1_ParamsRequest();
 	//UART1_HeartBeat();
 	//UART1_ReportTestSta();
-	
-	cnt_start_pc6  = g_pc6_cnt;
-	cnt_start_pc7  = g_pc7_cnt;
-	cnt_start_pc8  = g_pc8_cnt;
-	cnt_start_pc9  = g_pc9_cnt;
-	cnt_start_pc10 = g_pc10_cnt;
-	cnt_start_pc11 = g_pc11_cnt;
-	
-	time_start_exitline = os_jiffies;
 	
 	offline_init();
 
@@ -535,24 +519,6 @@ void app_cmds_task(void *p_arg)
 			time_start_hbeat = os_jiffies;
 		}
 		
-		// Unit: N * RisingLevel per 60s
-		if (is_timeout(time_start_exitline, 60*1000)) {
-			measured_val[16] = (float)calc_count_gap(cnt_start_pc6,  g_pc6_cnt);
-			measured_val[17] = (float)calc_count_gap(cnt_start_pc7,  g_pc7_cnt);
-			measured_val[18] = (float)calc_count_gap(cnt_start_pc8,  g_pc8_cnt);
-			measured_val[19] = (float)calc_count_gap(cnt_start_pc9,  g_pc9_cnt);
-			measured_val[20] = (float)calc_count_gap(cnt_start_pc10, g_pc10_cnt);
-			measured_val[21] = (float)calc_count_gap(cnt_start_pc11, g_pc11_cnt);
-			
-			cnt_start_pc6  = g_pc6_cnt;
-			cnt_start_pc7  = g_pc7_cnt;
-			cnt_start_pc8  = g_pc8_cnt;
-			cnt_start_pc9  = g_pc9_cnt;
-			cnt_start_pc10 = g_pc10_cnt;
-			cnt_start_pc11 = g_pc11_cnt;
-			time_start_exitline = os_jiffies;
-		}
-		
 		if (1 == triger_report) {
 			if (16 == i) {
 				triger_report = 0;
@@ -588,11 +554,27 @@ void app_cmds_task(void *p_arg)
 				
 		i++;
 		
+		if (16 == i) {
+			measured_val[16] = (float)g_pc6_cnt;
+			measured_val[17] = (float)g_pc7_cnt;
+			measured_val[18] = (float)g_pc8_cnt;
+			measured_val[19] = (float)g_pc9_cnt;
+			measured_val[20] = (float)g_pc10_cnt;
+			measured_val[21] = (float)g_pc11_cnt;
+
+			g_pc6_cnt = 0;
+			g_pc7_cnt = 0;
+			g_pc8_cnt = 0;
+			g_pc9_cnt = 0;
+			g_pc10_cnt = 0;
+			g_pc11_cnt = 0;
+		}
+
 		if (hbeat_cnt >= 5000) {// 50s
 			net_ok = 0;
 #if 1
 			// save offline warning&time into flash
-			if (22 == i) {
+			if (16 == i) {
 				u8 warning_detect = 0;
 				for (j=0; j<22; j++) {
 					if (1 == sys_env_mode) {

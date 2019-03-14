@@ -474,10 +474,12 @@ void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat)
 	UART1_SendData(buf, 86);
 }
 
+#define SW_VER "201903142200"
+
 void UART1_ReportOtaBinSta(u8 md5_res)
 {
 	u32* p_cid =  NULL;
-	u8 buf[40] = {0};
+	u8 buf[60] = {0};
 
 	u8* package_md5_calc =  NULL;
 	MD5_CTX package_md5_ctx;
@@ -498,17 +500,19 @@ void UART1_ReportOtaBinSta(u8 md5_res)
 	buf[15] = 0x04;
 	
 	buf[16] = md5_res;// result
-	
-	package_md5_calc = buf+17;
+
+	memcpy(buf+17, (u8*)SW_VER, 12);
+
+	package_md5_calc = buf+17+12;
 	GAgent_MD5Init(&package_md5_ctx);
-	GAgent_MD5Update(&package_md5_ctx, buf+3, 14);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 14+12);
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
-	buf[33] = 'E';
-	buf[34] = 'N';
-	buf[35] = 'D';
+	buf[33+12] = 'E';
+	buf[34+12] = 'N';
+	buf[35+12] = 'D';
 
-	UART1_SendData(buf, 36);
+	UART1_SendData(buf, 36+12);
 }
 
 void USART1_IRQHandler(void)                	//串口1中断服务程序
