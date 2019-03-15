@@ -118,6 +118,8 @@ extern u32 avaliable_count_64b;
 
 OS_MUTEX g_sem_w25q;
 
+extern const char* SW_VER;
+
 int main(void)
 {	
 	OFFLINE_DAT off_dat;
@@ -132,7 +134,7 @@ int main(void)
 	my_mem_init(SRAMIN); 	//初始化内部内存池
 	
 	// 10ms
-	TIM3_Int_Init(99, 7199);
+	TIM3_Int_Init(999, 7199);
 	uart_init(115200);	 	//串口初始化为115200
 	uart2_init(115200);
 	//Usart_DMA_Init();
@@ -285,12 +287,14 @@ void iap_task(void *p_arg)
 				// u1_printf("Before Write: Addr(0x%.6X), SingleSize(%d)\n", FLASH_BAK_ADDR+g_ota_recv_sum, (USART_RX_STA_BAK&0xFFFF));
 				iap_write_appbin(FLASH_BAK_ADDR+g_ota_recv_sum, USART_RX_BUF_BAK, USART_RX_STA_BAK&0xFFFF);
 				g_ota_recv_sum += USART_RX_STA_BAK&0xFFFF;
-				// u1_printf("After Write: IAP Packet(%d), TotalSize(0x%.6X)\n", g_ota_pg_numid, g_ota_recv_sum);
+				printf("WrittenSize(%d), TotalSize(%d)\n", g_ota_recv_sum, g_ota_bin_size);
 			} while (0);
 			
 			USART_RX_STA_BAK = 0;
 
 			if (g_ota_recv_sum == g_ota_bin_size) {
+				printf("OTA Success -> goto reset\n");
+
 				UART1_ReportOtaBinSta(0);// Pass
 				// Mark Flag in Flash
 				download_success();
@@ -299,7 +303,7 @@ void iap_task(void *p_arg)
 		}
 		
 		if (30 == i++) {
-			printf("Welcom to OilTrace!!!\n");
+			printf("Welcom to OilTrace Ver: %s!!!\n", SW_VER);
 			i = 0;
 			if (g_printf_enable != 0) {
 				u1_printf("APP1 STA = %X\n", USART_RX_STA2);
@@ -367,23 +371,23 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 					
 	if ((str = strstr((const char *)USART_RX_BUF2, "STA"))) {
 		if ((str = strstr((const char *)USART_RX_BUF2+((USART_RX_STA2&0xFFFF)-3), "END"))) {
-			u1_printf("package format is OK\n");
+			printf("package format is OK\n");
 		} else {
-			u1_printf("package format tail is NG\n");
+			printf("package format tail is NG\n");
 			return;
 		}
 	} else {
-		u1_printf("package format head is NG\n");
+		printf("package format head is NG\n");
 		return;
 	}
 	
 	if ((USART_RX_STA2&0xFFFF) < (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE)) {
-		u1_printf("package format size is NG\n");
+		printf("package format size is NG\n");
 		return;
 	}
 
 	memcpy(p_oil_pro->pro_crc, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - (PKT_CRC_SIZE+PKT_TAIL_SIZE)), PKT_CRC_SIZE);
-	u1_printf("pro_crc = %s\n", p_oil_pro->pro_crc);
+	//printf("pro_crc = %s\n", p_oil_pro->pro_crc);
 
 	dat_len = ((USART_RX_STA2&0xFFFF) - (PKT_HEAD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE));
 	GAgent_MD5Init(&package_md5_ctx);
@@ -391,17 +395,18 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
 	if (memcmp(package_md5_calc, p_oil_pro->pro_crc, SSL_MAX_LEN) != 0) {
+		printf("md5 is NG\n");
 		return;// TBD Enable
 	}
 
 	memcpy(p_oil_pro->pro_head, (char*)USART_RX_BUF2, PKT_HEAD_SIZE);
-	u1_printf("pro_head = %s\n", p_oil_pro->pro_head);
+	printf("pro_head = %s\n", p_oil_pro->pro_head);
 	
 	memcpy(p_oil_pro->dev_id, (char*)USART_RX_BUF2+PKT_HEAD_SIZE, PKT_DEVID_SIZE);
-	u1_printf("dev_id = %s\n", p_oil_pro->dev_id);
+	//printf("dev_id = %s\n", p_oil_pro->dev_id);
 	
 	memcpy(&p_oil_pro->pro_cmd, (char*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE, PKT_CMD_SIZE);
-	u1_printf("pro_cmd = %s\n", p_oil_pro->pro_cmd);
+	printf("pro_cmd = %.2d\n", p_oil_pro->pro_cmd);
 
 	p_oil_pro->data_len = (USART_RX_STA2&0xFFFF) - (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE);
 
@@ -434,7 +439,7 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 	}
 	
 	memcpy(p_oil_pro->pro_tail, (char*)USART_RX_BUF2+((USART_RX_STA2&0xFFFF) - PKT_TAIL_SIZE), PKT_TAIL_SIZE);
-	u1_printf("pro_tail = %s\n", p_oil_pro->pro_tail);
+	printf("pro_tail = %s\n", p_oil_pro->pro_tail);
 }
 
 void process_app_cmds(void)

@@ -474,7 +474,7 @@ void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat)
 	UART1_SendData(buf, 86);
 }
 
-#define SW_VER "201903142200"
+const char* SW_VER = "201903152235";
 
 void UART1_ReportOtaBinSta(u8 md5_res)
 {
@@ -501,18 +501,23 @@ void UART1_ReportOtaBinSta(u8 md5_res)
 	
 	buf[16] = md5_res;// result
 
-	memcpy(buf+17, (u8*)SW_VER, 12);
+	buf[16+1] = ((SW_VER[0]-'0')<<4) + (SW_VER[1]-'0');
+	buf[16+2] = ((SW_VER[2]-'0')<<4) + (SW_VER[3]-'0');
+	buf[16+3] = ((SW_VER[4]-'0')<<4) + (SW_VER[5]-'0');
+	buf[16+4] = ((SW_VER[6]-'0')<<4) + (SW_VER[7]-'0');
+	buf[16+5] = ((SW_VER[8]-'0')<<4) + (SW_VER[9]-'0');
+	buf[16+6] = ((SW_VER[10]-'0')<<4) + (SW_VER[11]-'0');
 
-	package_md5_calc = buf+17+12;
+	package_md5_calc = buf+17+6;
 	GAgent_MD5Init(&package_md5_ctx);
-	GAgent_MD5Update(&package_md5_ctx, buf+3, 14+12);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 14+6);
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
-	buf[33+12] = 'E';
-	buf[34+12] = 'N';
-	buf[35+12] = 'D';
+	buf[33+6] = 'E';
+	buf[34+6] = 'N';
+	buf[35+6] = 'D';
 
-	UART1_SendData(buf, 36+12);
+	UART1_SendData(buf, 36+6);
 }
 
 void USART1_IRQHandler(void)                	//串口1中断服务程序
@@ -527,7 +532,7 @@ void USART1_IRQHandler(void)                	//串口1中断服务程序
 	{
 		Res =USART_ReceiveData(USART1);	//读取接收到的数据
 		
-		USART_SendData(USART2, Res);
+		// USART_SendData(USART2, Res);
 		
 		if((USART_RX_STA&(1<<19))==0)//接收未完成
 		{
