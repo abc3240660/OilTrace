@@ -530,6 +530,20 @@ void app_cmds_task(void *p_arg)
 				
 				LED0 = !LED0;
 
+				measured_val[16] = (float)g_pc6_cnt;
+				measured_val[17] = (float)g_pc7_cnt;
+				measured_val[18] = (float)g_pc8_cnt;
+				measured_val[19] = (float)g_pc9_cnt;
+				measured_val[20] = (float)g_pc10_cnt;
+				measured_val[21] = (float)g_pc11_cnt;
+
+				g_pc6_cnt = 0;
+				g_pc7_cnt = 0;
+				g_pc8_cnt = 0;
+				g_pc9_cnt = 0;
+				g_pc10_cnt = 0;
+				g_pc11_cnt = 0;
+
 				UART1_AdValReport(measured_val);
 			}
 		}
@@ -558,22 +572,6 @@ void app_cmds_task(void *p_arg)
 		}
 				
 		i++;
-		
-		if (16 == i) {
-			measured_val[16] = (float)g_pc6_cnt;
-			measured_val[17] = (float)g_pc7_cnt;
-			measured_val[18] = (float)g_pc8_cnt;
-			measured_val[19] = (float)g_pc9_cnt;
-			measured_val[20] = (float)g_pc10_cnt;
-			measured_val[21] = (float)g_pc11_cnt;
-
-			g_pc6_cnt = 0;
-			g_pc7_cnt = 0;
-			g_pc8_cnt = 0;
-			g_pc9_cnt = 0;
-			g_pc10_cnt = 0;
-			g_pc11_cnt = 0;
-		}
 
 		if (hbeat_cnt >= 5000) {// 50s
 			net_ok = 0;
@@ -581,6 +579,21 @@ void app_cmds_task(void *p_arg)
 			// save offline warning&time into flash
 			if (16 == i) {
 				u8 warning_detect = 0;
+
+				measured_val[16] = (float)g_pc6_cnt;
+				measured_val[17] = (float)g_pc7_cnt;
+				measured_val[18] = (float)g_pc8_cnt;
+				measured_val[19] = (float)g_pc9_cnt;
+				measured_val[20] = (float)g_pc10_cnt;
+				measured_val[21] = (float)g_pc11_cnt;
+
+				g_pc6_cnt = 0;
+				g_pc7_cnt = 0;
+				g_pc8_cnt = 0;
+				g_pc9_cnt = 0;
+				g_pc10_cnt = 0;
+				g_pc11_cnt = 0;
+
 				for (j=0; j<22; j++) {
 					if (1 == sys_env_mode) {
 						if (1 == g_sys_env_old.war_mode[j]) {

@@ -237,7 +237,7 @@ void UART1_SendData(u8 *data, u16 num)
 void UART1_AdValReport(float *val)
 {
 	u8 i = 0;
-	
+	u8 flag = 0;
 	u32* p_cid =  NULL;
 	u8 buf[80] = {0};
 
@@ -268,6 +268,20 @@ void UART1_AdValReport(float *val)
 
 		buf[16+i*2] = (u8)(integer_val>>1);
 		buf[16+i*2+1] = (u8)((integer_val&0x01)*128 + decimal_val);
+		
+		if (i>=16) {
+			if ((buf[16+i*2]!=0) || (buf[16+i*2+1]!=0)) {
+				flag = 1;
+			}
+		}
+	}
+	
+	if (1 == flag) {
+		printf("EXTI DAT:");
+		for (i=16; i<22; i++) {
+			printf("%.2X%.2X", buf[16+i*2], buf[16+i*2+1]);
+		}
+		printf("\n");
 	}
 
 	package_md5_calc = buf+60;
@@ -474,7 +488,7 @@ void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat)
 	UART1_SendData(buf, 86);
 }
 
-const char* SW_VER = "201903152235";
+const char* SW_VER = "201903190640";
 
 void UART1_ReportOtaBinSta(u8 md5_res)
 {

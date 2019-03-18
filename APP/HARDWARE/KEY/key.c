@@ -161,7 +161,7 @@ void EXTI9_5_IRQHandler(void)
 
 		exit_twice_calc_flag[0] = !exit_twice_calc_flag[0];
 
-		printf("EXTI_Line6\n");
+		printf("EXTI_Line6, g_pc6_cnt = %d\n", g_pc6_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line6);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line7) != RESET) {
@@ -173,7 +173,7 @@ void EXTI9_5_IRQHandler(void)
 
 		exit_twice_calc_flag[1] = !exit_twice_calc_flag[1];
 
-		printf("EXTI_Line7\n");
+		printf("EXTI_Line7, g_pc7_cnt = %d\n", g_pc7_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line7);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line8) != RESET) {
@@ -185,7 +185,7 @@ void EXTI9_5_IRQHandler(void)
 
 		exit_twice_calc_flag[2] = !exit_twice_calc_flag[2];
 
-		printf("EXTI_Line8\n");
+		printf("EXTI_Line8, g_pc8_cnt = %d\n", g_pc8_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
@@ -197,7 +197,7 @@ void EXTI9_5_IRQHandler(void)
 
 		exit_twice_calc_flag[3] = !exit_twice_calc_flag[3];
 
-		printf("EXTI_Line9\n");
+		printf("EXTI_Line9, g_pc9_cnt = %d\n", g_pc9_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE3上的中断标志位  
 	}
 }
@@ -213,7 +213,7 @@ void EXTI15_10_IRQHandler(void)
 
 		exit_twice_calc_flag[4] = !exit_twice_calc_flag[4];
 
-		printf("EXTI_Line10\n");
+		printf("EXTI_Line9, g_pc10_cnt = %d\n", g_pc10_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line11) != RESET) {
@@ -225,7 +225,7 @@ void EXTI15_10_IRQHandler(void)
 
 		exit_twice_calc_flag[5] = !exit_twice_calc_flag[5];
 
-		printf("EXTI_Line11\n");
+		printf("EXTI_Line11, g_pc11_cnt = %d\n", g_pc11_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line11);  //清除LINE3上的中断标志位  
 	}
 }
