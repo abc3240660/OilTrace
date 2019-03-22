@@ -355,10 +355,12 @@ void UART1_ReportTestSta(void)
 	UART1_SendData(buf, 79);
 }
 
+const char* SW_VER = "201903192152";
+
 void UART1_ParamsRequest(void)
 {
 	u32* p_cid =  NULL;
-	u8 buf[40] = {0};
+	u8 buf[60] = {0};
 
 	u8* package_md5_calc =  NULL;
 	MD5_CTX package_md5_ctx;
@@ -378,18 +380,23 @@ void UART1_ParamsRequest(void)
 
 	buf[15] = 0x06;
 	
-	buf[16] = 0x00;
-	
-	package_md5_calc = buf+17;
+	buf[15+1] = ((SW_VER[0]-'0')<<4) + (SW_VER[1]-'0');
+	buf[15+2] = ((SW_VER[2]-'0')<<4) + (SW_VER[3]-'0');
+	buf[15+3] = ((SW_VER[4]-'0')<<4) + (SW_VER[5]-'0');
+	buf[15+4] = ((SW_VER[6]-'0')<<4) + (SW_VER[7]-'0');
+	buf[15+5] = ((SW_VER[8]-'0')<<4) + (SW_VER[9]-'0');
+	buf[15+6] = ((SW_VER[10]-'0')<<4) + (SW_VER[11]-'0');
+
+	package_md5_calc = buf+17+5;
 	GAgent_MD5Init(&package_md5_ctx);
-	GAgent_MD5Update(&package_md5_ctx, buf+3, 14);
+	GAgent_MD5Update(&package_md5_ctx, buf+3, 14+5);
   GAgent_MD5Final(&package_md5_ctx, package_md5_calc);
 
-	buf[33] = 'E';
-	buf[34] = 'N';
-	buf[35] = 'D';
+	buf[33+5] = 'E';
+	buf[34+5] = 'N';
+	buf[35+5] = 'D';
 
-	UART1_SendData(buf, 36);
+	UART1_SendData(buf, 36+5);
 }
 
 void parse_rtc_time(u8* buf)
@@ -487,8 +494,6 @@ void UART1_AdValReportOffline(OFFLINE_DAT *p_off_dat)
 
 	UART1_SendData(buf, 86);
 }
-
-const char* SW_VER = "201903190640";
 
 void UART1_ReportOtaBinSta(u8 md5_res)
 {
