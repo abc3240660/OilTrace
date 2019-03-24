@@ -99,6 +99,10 @@ u16 hbeat_cnt = 0;
 u32 time_start_hbeat = 0;
 u32 time_start_report = 0;
 
+u32 time_start_ota = 0;
+
+u8 triger_stop_others = 0;
+
 extern u16 g_pc6_cnt;
 extern u16 g_pc7_cnt;
 extern u16 g_pc8_cnt;
@@ -133,8 +137,6 @@ int main(void)
 
 	my_mem_init(SRAMIN); 	//初始化内部内存池
 	
-	// 10ms
-	TIM3_Int_Init(999, 7199);
 	uart_init(115200);	 	//串口初始化为115200
 	uart2_init(115200);
 	//Usart_DMA_Init();
@@ -143,7 +145,11 @@ int main(void)
 //		printf("Welcom to OilTrace!!!\n");
 //		delay_ms(1000);
 //	}
-	
+
+	printf("Starting ...\n");
+
+	// 10ms
+	TIM3_Int_Init(99, 7199);
 	RTC_Init();
 	RTC_Get();
 
@@ -340,6 +346,9 @@ void parse_server_params(u8* data, u16 size)
 
 		report_gap = (data[7+1]<<8) + data[7+0];
 		hbeat_gap  = (data[7+3]<<8) + data[7+2];
+
+		printf("report_gap = %d\n", report_gap);
+		printf("hbeat_gap = %d\n", hbeat_gap);
 		
 		if (report_gap < 250) {
 			report_gap = 250;// 500ms
@@ -410,13 +419,19 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 
 	p_oil_pro->data_len = (USART_RX_STA2&0xFFFF) - (PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+PKT_CRC_SIZE+PKT_TAIL_SIZE);
 
+	printf("data_len = %.2d\n", p_oil_pro->data_len);
+	
 	if (0x02 == p_oil_pro->pro_cmd) {
 		if (p_oil_pro->data_len != 3) {// Max 3Bytes
 			return;
 		} else {
 			u8 *p_size_data = USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE;
 			g_ota_bin_size = ((*(p_size_data))<<16) + ((*(p_size_data+1))<<8) + *(p_size_data+2);
-			
+
+			time_start_ota = os_jiffies;
+			triger_stop_others = 1;
+			printf("triger_stop_others = 1\n");
+
 			g_ota_recv_sum = 0;
 		}
 	} else if (0x03 == p_oil_pro->pro_cmd) {
@@ -506,13 +521,16 @@ void app_cmds_task(void *p_arg)
 
 		if (1 == net_ok) {
 			if (is_timeout(time_start_report, report_gap)) {
+				// printf("triger_report = 1\n");
 				triger_report = 1;
 				time_start_report = os_jiffies;
 			} else {
 				if (avaliable_count_64b > 0) {
 					// send offline warning to server
-					offline_dump(&off_dat);
-					UART1_AdValReportOffline(&off_dat);
+					if (0 == triger_stop_others) {
+						offline_dump(&off_dat);
+						UART1_AdValReportOffline(&off_dat);
+					}
 				}
 			}
 		} else {
@@ -524,11 +542,21 @@ void app_cmds_task(void *p_arg)
 			time_start_hbeat = os_jiffies;
 		}
 		
+		// stop other msg for 60s during ota...
+		if (1 == triger_stop_others) {
+			if (is_timeout(time_start_ota, 60*1000)) {
+				triger_stop_others = 0;
+				printf("triger_stop_others = 0\n");
+			}
+		}
+		
 		if (1 == triger_report) {
 			if (16 == i) {
 				triger_report = 0;
 				
 				LED0 = !LED0;
+
+				// printf("LED0 Switched\n");
 
 				measured_val[16] = (float)g_pc6_cnt;
 				measured_val[17] = (float)g_pc7_cnt;
@@ -544,15 +572,19 @@ void app_cmds_task(void *p_arg)
 				g_pc10_cnt = 0;
 				g_pc11_cnt = 0;
 
-				UART1_AdValReport(measured_val);
+				if (0 == triger_stop_others) {
+					UART1_AdValReport(measured_val);
+				}
 			}
 		}
 		
 		if (1 == triger_hbeat) {
 			// LED0 = !LED0;
-			printf("Send HeartBeat\n");
 			triger_hbeat = 0;
-			UART1_HeartBeat();
+			if (0 == triger_stop_others) {
+				printf("Send HeartBeat\n");
+				UART1_HeartBeat();
+			}
 		}
 
 		if (i >= 16) {
@@ -573,8 +605,10 @@ void app_cmds_task(void *p_arg)
 				
 		i++;
 
-		if (hbeat_cnt >= 5000) {// 50s
-			net_ok = 0;
+		if ((hbeat_cnt>=5000) || (1==triger_stop_others)) {// 50s
+			if (triger_stop_others != 1) {
+				net_ok = 0;
+			}
 #if 1
 			// save offline warning&time into flash
 			if (16 == i) {

@@ -58,6 +58,7 @@ void TIM3_IRQHandler(void)
 		}
 
 		if (0 == (os_jiffies_10ms%10)) {
+			// printf("os_jiffies_10ms = %d\n", os_jiffies_10ms);
 			os_jiffies++;
 			if (os_jiffies >= 10000) {
 				os_jiffies = 0;

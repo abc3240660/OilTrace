@@ -262,6 +262,11 @@ void UART1_AdValReport(float *val)
 
 	buf[15] = 0x01;
 	
+//	for (i=0; i<12; i++) {
+//		printf("%.2x", buf[3+i]);
+//	}
+//	printf("\n");
+
 	for (i=0; i<22; i++) {
 		integer_val = (u16)val[i];
 		decimal_val = (u16)((val[i]-integer_val)*100);
@@ -283,6 +288,8 @@ void UART1_AdValReport(float *val)
 		}
 		printf("\n");
 	}
+	
+//	printf("UART1_AdValReport ...\n");
 
 	package_md5_calc = buf+60;
 	GAgent_MD5Init(&package_md5_ctx);
@@ -355,7 +362,7 @@ void UART1_ReportTestSta(void)
 	UART1_SendData(buf, 79);
 }
 
-const char* SW_VER = "201903192152";
+const char* SW_VER = "201903232235";
 
 void UART1_ParamsRequest(void)
 {

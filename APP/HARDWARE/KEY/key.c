@@ -155,49 +155,57 @@ void EXTI9_5_IRQHandler(void)
 	if (EXTI_GetITStatus(EXTI_Line6) != RESET) {
 		if (0 == exit_twice_calc_flag[0]) {
 			time_start_pc6 = os_jiffies_10ms;
+			exit_twice_calc_flag[0] = 1;
 		} else {
 			g_pc6_cnt = 60000 / (calc_count_gap_10ms(time_start_pc6, os_jiffies_10ms)*10);
+			time_start_pc6 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[0] = !exit_twice_calc_flag[0];
+		// exit_twice_calc_flag[0] = !exit_twice_calc_flag[0];
 
-		printf("EXTI_Line6, g_pc6_cnt = %d\n", g_pc6_cnt);
+		printf("EXTI_Line6, os_jiffies_10ms = %d, g_pc6_cnt = %d\n", os_jiffies_10ms, g_pc6_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line6);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line7) != RESET) {
 		if (0 == exit_twice_calc_flag[1]) {
 			time_start_pc7 = os_jiffies_10ms;
+			exit_twice_calc_flag[1] = 1;
 		} else {
 			g_pc7_cnt = 60000 / (calc_count_gap_10ms(time_start_pc7, os_jiffies_10ms)*10);
+			time_start_pc7 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[1] = !exit_twice_calc_flag[1];
+		// exit_twice_calc_flag[1] = !exit_twice_calc_flag[1];
 
-		printf("EXTI_Line7, g_pc7_cnt = %d\n", g_pc7_cnt);
+		printf("EXTI_Line7, os_jiffies_10ms = %d, g_pc7_cnt = %d\n", os_jiffies_10ms, g_pc7_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line7);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line8) != RESET) {
 		if (0 == exit_twice_calc_flag[2]) {
 			time_start_pc8 = os_jiffies_10ms;
+			exit_twice_calc_flag[2] = 1;
 		} else {
 			g_pc8_cnt = 60000 / (calc_count_gap_10ms(time_start_pc8, os_jiffies_10ms)*10);
+			time_start_pc8 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[2] = !exit_twice_calc_flag[2];
+		// exit_twice_calc_flag[2] = !exit_twice_calc_flag[2];
 
-		printf("EXTI_Line8, g_pc8_cnt = %d\n", g_pc8_cnt);
+		printf("EXTI_Line8, os_jiffies_10ms = %d, g_pc8_cnt = %d\n", os_jiffies_10ms, g_pc8_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
 		if (0 == exit_twice_calc_flag[3]) {
 			time_start_pc9 = os_jiffies_10ms;
+			exit_twice_calc_flag[3] = 1;
 		} else {
 			g_pc9_cnt = 60000 / (calc_count_gap_10ms(time_start_pc9, os_jiffies_10ms)*10);
+			time_start_pc9 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[3] = !exit_twice_calc_flag[3];
+		// exit_twice_calc_flag[3] = !exit_twice_calc_flag[3];
 
-		printf("EXTI_Line9, g_pc9_cnt = %d\n", g_pc9_cnt);
+		printf("EXTI_Line9, os_jiffies_10ms = %d, g_pc9_cnt = %d\n", os_jiffies_10ms, g_pc9_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE3上的中断标志位  
 	}
 }
@@ -207,25 +215,29 @@ void EXTI15_10_IRQHandler(void)
 	if (EXTI_GetITStatus(EXTI_Line10) != RESET) {
 		if (0 == exit_twice_calc_flag[4]) {
 			time_start_pc10 = os_jiffies_10ms;
+			exit_twice_calc_flag[4] = 1;
 		} else {
 			g_pc10_cnt = 60000 / (calc_count_gap_10ms(time_start_pc10, os_jiffies_10ms)*10);
+			time_start_pc10 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[4] = !exit_twice_calc_flag[4];
+		// exit_twice_calc_flag[4] = !exit_twice_calc_flag[4];
 
-		printf("EXTI_Line9, g_pc10_cnt = %d\n", g_pc10_cnt);
+		printf("EXTI_Line10, os_jiffies_10ms = %d, g_pc10_cnt = %d\n", os_jiffies_10ms, g_pc10_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE3上的中断标志位  
 	}
 	if (EXTI_GetITStatus(EXTI_Line11) != RESET) {
 		if (0 == exit_twice_calc_flag[5]) {
 			time_start_pc11 = os_jiffies_10ms;
+			exit_twice_calc_flag[5] = 1;
 		} else {
 			g_pc11_cnt = 60000 / (calc_count_gap_10ms(time_start_pc11, os_jiffies_10ms)*10);
+			time_start_pc11 = os_jiffies_10ms;
 		}
 
-		exit_twice_calc_flag[5] = !exit_twice_calc_flag[5];
+		// exit_twice_calc_flag[5] = !exit_twice_calc_flag[5];
 
-		printf("EXTI_Line11, g_pc11_cnt = %d\n", g_pc11_cnt);
+		printf("EXTI_Line11, os_jiffies_10ms = %d, g_pc11_cnt = %d\n", os_jiffies_10ms, g_pc11_cnt);
 		EXTI_ClearITPendingBit(EXTI_Line11);  //清除LINE3上的中断标志位  
 	}
 }
