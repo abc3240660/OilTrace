@@ -96,10 +96,14 @@ u16 hbeat_gap = 5;
 u8 net_ok = 0;
 u16 hbeat_cnt = 0;
 
+u32 svr_pkt_max_size = 2048;
+
 u32 time_start_hbeat = 0;
 u32 time_start_report = 0;
 
 u32 time_start_ota = 0;
+
+u32 time_start_re_ack = 0;
 
 u8 triger_stop_others = 0;
 
@@ -281,6 +285,10 @@ void iap_task(void *p_arg)
 			//g_ota_pg_numid = USART_RX_BUF_BAK[0];
 			//USART_RX_STA_BAK -= 1;
 
+			if (g_ota_pg_numid < 1) {
+				g_ota_pg_numid = 1;
+			}
+
 			do {
 				if ((g_ota_recv_sum+USART_RX_STA_BAK&0xFFFF) > g_ota_bin_size) {
 					// u1_printf("OTA TotalSize Overflow!!!\n");
@@ -288,17 +296,23 @@ void iap_task(void *p_arg)
 					break;
 				}
 
-				UART1_ReportOtaPackageSta(0);// Pass
+				time_start_re_ack = os_jiffies;
 
 				// u1_printf("Before Write: Addr(0x%.6X), SingleSize(%d)\n", FLASH_BAK_ADDR+g_ota_recv_sum, (USART_RX_STA_BAK&0xFFFF));
-				iap_write_appbin(FLASH_BAK_ADDR+g_ota_recv_sum, USART_RX_BUF_BAK, USART_RX_STA_BAK&0xFFFF);
-				g_ota_recv_sum += USART_RX_STA_BAK&0xFFFF;
+				iap_write_appbin(FLASH_BAK_ADDR+svr_pkt_max_size*(g_ota_pg_numid-1), USART_RX_BUF_BAK, USART_RX_STA_BAK&0xFFFF);
+				g_ota_recv_sum = svr_pkt_max_size;
+				g_ota_recv_sum *= (g_ota_pg_numid-1);
+				g_ota_recv_sum += (USART_RX_STA_BAK&0xFFFF);
 				printf("WrittenSize(%d), TotalSize(%d)\n", g_ota_recv_sum, g_ota_bin_size);
+				
+				USART_RX_STA_BAK = 0;
+				UART1_ReportOtaPackageSta(0);// Pass
 			} while (0);
 			
 			USART_RX_STA_BAK = 0;
 
 			if (g_ota_recv_sum == g_ota_bin_size) {
+				time_start_re_ack = 0;
 				printf("OTA Success -> goto reset\n");
 
 				UART1_ReportOtaBinSta(0);// Pass
@@ -433,6 +447,7 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 			printf("triger_stop_others = 1\n");
 
 			g_ota_recv_sum = 0;
+			time_start_re_ack = 0;
 		}
 	} else if (0x03 == p_oil_pro->pro_cmd) {
 		if (p_oil_pro->data_len > 2049) {// Max: 1B PackNum + 2048B Data
@@ -441,9 +456,20 @@ void parse_oil_pro(OIL_PRO *p_oil_pro)
 		if (p_oil_pro->data_len != 0) {
 			while (USART_RX_STA_BAK);
 			
-			memcpy(USART_RX_BUF_BAK, (char*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE, p_oil_pro->data_len);
+			time_start_ota = os_jiffies;
+			time_start_re_ack = 0;
+
+			g_ota_pg_numid = USART_RX_BUF2[PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE];
+			printf("g_ota_pg_numid = %d\n", g_ota_pg_numid);
+			
+			if (1 == g_ota_pg_numid) {
+				svr_pkt_max_size = p_oil_pro->data_len - 1;
+				printf("svr_pkt_max_size = %d\n", svr_pkt_max_size);
+			}
+			
+			memcpy(USART_RX_BUF_BAK, (char*)USART_RX_BUF2+PKT_HEAD_SIZE+PKT_DEVID_SIZE+PKT_CMD_SIZE+1, p_oil_pro->data_len);
 			p_oil_pro->p_data = (u8*)USART_RX_BUF_BAK;
-			USART_RX_STA_BAK = p_oil_pro->data_len;
+			USART_RX_STA_BAK = p_oil_pro->data_len - 1;
 			USART_RX_STA_BAK |= 1<<19;
 		}
 	} else if (0x06 == p_oil_pro->pro_cmd) {
@@ -542,10 +568,18 @@ void app_cmds_task(void *p_arg)
 			time_start_hbeat = os_jiffies;
 		}
 		
+		if (time_start_re_ack != 0) {
+			if (is_timeout(time_start_re_ack, 2*1000)) {
+				time_start_re_ack = os_jiffies;
+				UART1_ReportOtaPackageSta(1);
+			}
+		}
+		
 		// stop other msg for 60s during ota...
 		if (1 == triger_stop_others) {
 			if (is_timeout(time_start_ota, 60*1000)) {
 				triger_stop_others = 0;
+				time_start_re_ack = 0;
 				printf("triger_stop_others = 0\n");
 			}
 		}

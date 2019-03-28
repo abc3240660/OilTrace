@@ -307,6 +307,7 @@ void UART1_AdValReport(float *val)
 // RESULT: 1-pass, 2-fail
 void UART1_ReportOtaPackageSta(u8 md5_res)
 {
+	u8 i = 0;
 	u32* p_cid =  NULL;
 	u8 buf[40] = {0};
 
@@ -340,6 +341,13 @@ void UART1_ReportOtaPackageSta(u8 md5_res)
 	buf[35] = 'N';
 	buf[36] = 'D';
 
+	printf("UART1_ReportOtaPackageSta %d = %d\n", g_ota_pg_numid, md5_res);
+
+	for (i=0; i<37; i++) {
+		printf("%.2X", buf[i]);
+	}
+	printf("\n");
+
 	UART1_SendData(buf, 37);
 }
 
@@ -362,7 +370,7 @@ void UART1_ReportTestSta(void)
 	UART1_SendData(buf, 79);
 }
 
-const char* SW_VER = "201903232235";
+const char* SW_VER = "201903282058";
 
 void UART1_ParamsRequest(void)
 {
